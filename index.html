@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="손떨림체험">
+<meta name="theme-color" content="#14181C">
+<title>손떨림체험 · 단추 채우기 · 이름 쓰기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-deep:#14181C; --bg-panel:#1B2026; --bg-panel-2:#242B32;
+    --ink:#EEEAE2; --ink-dim:#94A0AA; --ink-faint:#5B646D;
+    --amber:#D9A441; --amber-dim:#8A6C33; --teal:#4C8B87; --line:#333B43;
+    --fabric:#2B4A5A; --fabric-2:#233C49;
+    --safe-top: env(safe-area-inset-top, 0px); --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; touch-action:none; user-select:none;}
+  html,body{ margin:0; padding:0; width:100%; height:100%; background:var(--bg-deep); color:var(--ink);
+    font-family:'Noto Sans KR',sans-serif; overflow:hidden; overscroll-behavior:none; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+  #app{ position:fixed; inset:0; display:flex; flex-direction:column; }
+
+  #topbar{ flex-shrink:0; padding: calc(var(--safe-top) + 12px) 18px 12px;
+    display:flex; align-items:center; justify-content:space-between; background:var(--bg-panel); border-bottom:1px solid var(--line); gap:8px; }
+  #topbar h1{ margin:0; font-size:14.5px; font-weight:700; }
+  #phaseBadge{ font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:700; color:var(--bg-deep);
+    background:var(--amber); padding:4px 8px; border-radius:5px; white-space:nowrap; }
+  #modeButtons{ display:flex; gap:6px; }
+  .modebtn{ padding:7px 12px; border-radius:16px; border:1px solid var(--line); background:var(--bg-panel-2);
+    color:var(--ink-dim); font-family:'Noto Sans KR',sans-serif; font-size:12px; font-weight:700; cursor:pointer; }
+  .modebtn.on{ border-color:var(--teal); background:rgba(76,139,135,0.16); color:var(--teal); }
+  .modebtn.on.trm{ border-color:var(--amber); background:rgba(217,164,65,0.16); color:var(--amber); }
+
+  #stage{ position:relative; flex:1; min-height:0; background:#0F1215; overflow:hidden; }
+
+  #statRow{ position:absolute; top:14px; left:0; right:0; display:flex; justify-content:center; gap:18px; z-index:5; pointer-events:none; }
+  .stat{ font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--ink-dim); background:rgba(27,32,38,.7);
+    border:1px solid var(--line); border-radius:14px; padding:5px 12px; }
+  .stat b{ color:var(--amber); }
+
+  #instr{ position:absolute; top:56px; left:0; right:0; text-align:center; font-size:13px; color:var(--ink-dim); pointer-events:none; padding:0 20px; z-index:5; }
+  #instr b{ color:var(--ink); }
+
+  /* --- button stage --- */
+  #buttonScene{ position:absolute; inset:0; }
+  #placket{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    width:130px; height:330px; background:linear-gradient(180deg, var(--fabric), var(--fabric-2));
+    border-radius:10px; box-shadow:0 10px 30px rgba(0,0,0,.4); }
+  #placket::before{ content:''; position:absolute; left:50%; top:0; bottom:0; width:1px; background:rgba(255,255,255,.08); }
+  .buttonhole{ position:absolute; width:44px; height:16px; margin-left:-22px; margin-top:-8px;
+    border-radius:8px; border:2px dashed rgba(217,164,65,0.65); background:rgba(0,0,0,0.25); }
+  .buttonhole.success{ border-style:solid; border-color:var(--teal); background:rgba(76,139,135,0.25); }
+  .btnObj{ position:absolute; width:46px; height:46px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #F3E4C2, #C9A24B 70%, #93732C 100%);
+    box-shadow:0 4px 10px rgba(0,0,0,.4), inset 0 0 0 2px rgba(0,0,0,.15);
+    display:flex; align-items:center; justify-content:center; cursor:grab; touch-action:none; }
+  .btnObj .holes{ display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
+  .btnObj .holes span{ width:5px; height:5px; border-radius:50%; background:rgba(60,45,10,.55); display:block; }
+  .btnObj.dragging{ cursor:grabbing; }
+  .btnObj.success{ background:radial-gradient(circle at 35% 30%, #DFF3E4, #7FBF8E 70%, #4E8F5E 100%); }
+  #successBadge{ position:absolute; left:50%; bottom:16%; transform:translate(-50%,10px); z-index:6;
+    background:var(--teal); color:#0D1F1D; font-weight:700; font-size:13px; padding:8px 16px; border-radius:20px;
+    opacity:0; transition:opacity .2s, transform .2s; pointer-events:none; }
+  #successBadge.show{ opacity:1; transform:translate(-50%,0); }
+
+  /* --- writing stage --- */
+  #writeScene{ position:absolute; inset:0; display:none; }
+  #guideCanvas, #drawCanvas{ position:absolute; inset:0; width:100%; height:100%; }
+  #writeDoneBtn{ position:absolute; left:50%; bottom:22px; transform:translateX(-50%); z-index:6;
+    background:var(--amber); color:#1B1300; border:none; font-family:'Noto Sans KR',sans-serif; font-weight:700;
+    font-size:14px; padding:11px 26px; border-radius:26px; cursor:pointer; }
+
+  /* --- summary --- */
+  #summaryScene{ position:absolute; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center; gap:14px; text-align:center; padding:0 30px; }
+  #summaryScene h2{ margin:0; font-size:20px; }
+  #summaryScene p{ margin:0; color:var(--ink-dim); font-size:13.5px; line-height:1.65; max-width:320px; }
+
+  #bottomBar{ flex-shrink:0; background:var(--bg-panel); border-top:1px solid var(--line);
+    padding: 12px 18px calc(var(--safe-bottom) + 12px); display:flex; align-items:center; gap:10px; }
+  #resetBtn{ flex:0 0 auto; display:flex; align-items:center; gap:6px; background:var(--bg-panel-2); border:1px solid var(--line);
+    border-radius:20px; padding:9px 16px; color:var(--ink-dim); font-family:'Noto Sans KR',sans-serif; font-size:13px; cursor:pointer; }
+  #resetBtn svg{ width:14px; height:14px; }
+  #note{ flex:1; font-size:11.5px; color:var(--ink-faint); line-height:1.5; }
+  #note b{ color:var(--amber-dim); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <h1>손떨림 체험</h1>
+    <span id="phaseBadge" class="mono">1/4</span>
+    <div id="modeButtons">
+      <button id="btnNormal" class="modebtn on">1 정상</button>
+      <button id="btnTremor" class="modebtn trm">2 손떨림</button>
+    </div>
+  </div>
+
+  <div id="stage">
+    <div id="statRow">
+      <div class="stat">시도 <b id="statTries">0</b>회</div>
+      <div class="stat">성공 <b id="statSuccess">0</b>회</div>
+    </div>
+    <div id="instr">먼저 <b>정상 상태</b>로 단추 2개를 채워보세요</div>
+
+    <div id="buttonScene">
+      <div id="placket"></div>
+      <div class="buttonhole" id="hole1"></div>
+      <div class="buttonhole" id="hole2"></div>
+      <div id="successBadge">✓ 다 채웠어요!</div>
+      <div class="btnObj" id="btn1"><div class="holes"><span></span><span></span><span></span><span></span></div></div>
+      <div class="btnObj" id="btn2"><div class="holes"><span></span><span></span><span></span><span></span></div></div>
+    </div>
+
+    <div id="writeScene">
+      <canvas id="guideCanvas"></canvas>
+      <canvas id="drawCanvas"></canvas>
+      <button id="writeDoneBtn">다 썼어요</button>
+    </div>
+
+    <div id="summaryScene">
+      <div class="eyebrow" style="font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;letter-spacing:.1em;color:var(--amber);">완료</div>
+      <h2>체험이 끝났습니다</h2>
+      <p>단추 채우기와 이름 쓰기, 정상일 때와 손떨림일 때가 어떻게 달랐는지 비교해보세요. 파킨슨병·본태성 진전 등으로 손이 떨리는 어르신은 이 두 가지를 일상에서 매번 겪습니다.</p>
+    </div>
+  </div>
+
+  <div id="bottomBar">
+    <button id="resetBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/></svg>
+      처음부터 다시
+    </button>
+    <div id="note"><b>2 손떨림</b>을 누르면 손을 가만히 움직여도 떨려서 단추 채우기·글씨 쓰기가 훨씬 어려워집니다.</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const stage = document.getElementById('stage');
+  const topbar = document.getElementById('topbar');
+  const phaseBadge = document.getElementById('phaseBadge');
+  const instr = document.getElementById('instr');
+  const statRow = document.getElementById('statRow');
+  const statTries = document.getElementById('statTries');
+  const statSuccess = document.getElementById('statSuccess');
+  const btnNormal = document.getElementById('btnNormal');
+  const btnTremor = document.getElementById('btnTremor');
+  const resetBtn = document.getElementById('resetBtn');
+
+  const buttonScene = document.getElementById('buttonScene');
+  const writeScene = document.getElementById('writeScene');
+  const summaryScene = document.getElementById('summaryScene');
+  const placket = document.getElementById('placket');
+  const hole1 = document.getElementById('hole1');
+  const hole2 = document.getElementById('hole2');
+  const btn1El = document.getElementById('btn1');
+  const btn2El = document.getElementById('btn2');
+  const successBadge = document.getElementById('successBadge');
+  const writeDoneBtn = document.getElementById('writeDoneBtn');
+
+  let mode = 'normal'; // 'normal' | 'tremor'
+  let phase = 'buttons'; // buttons -> write1 -> write2 -> summary
+  let tries = 0, successes = 0;
+
+  function setMode(next){
+    mode = next;
+    btnNormal.classList.toggle('on', mode==='normal');
+    btnTremor.classList.toggle('on', mode==='tremor');
+  }
+  btnNormal.addEventListener('click', ()=> setMode('normal'));
+  btnTremor.addEventListener('click', ()=> setMode('tremor'));
+
+  function showScene(which){
+    buttonScene.style.display = which==='button' ? 'block' : 'none';
+    writeScene.style.display = which==='write' ? 'block' : 'none';
+    summaryScene.style.display = which==='summary' ? 'flex' : 'none';
+    statRow.style.display = which==='button' ? 'flex' : 'none';
+    instr.style.display = which==='summary' ? 'none' : 'block';
+  }
+
+  function startPhase(p){
+    phase = p;
+    if(p==='btnNormal'){
+      setMode('normal'); setModeLocked(true);
+      phaseBadge.textContent = '1/4 · 단추 (정상)';
+      instr.innerHTML = '먼저 <b>정상 상태</b>로 단추 2개를 채워보세요';
+      showScene('button'); layoutButtons();
+    } else if(p==='btnTremor'){
+      setMode('tremor'); setModeLocked(true);
+      phaseBadge.textContent = '2/4 · 단추 (손떨림)';
+      instr.innerHTML = '이번엔 <b>손떨림 상태</b>로 같은 단추 2개를 채워보세요';
+      showScene('button'); layoutButtons();
+    } else if(p==='write1'){
+      setMode('normal'); setModeLocked(true);
+      phaseBadge.textContent = '3/4 · 이름 쓰기 (정상)';
+      instr.innerHTML = '먼저 <b>정상 상태</b>로 이름을 써보세요';
+      writeDoneBtn.textContent = '다음 (손떨림으로)';
+      showScene('write'); resizeWrite(); clearWrite();
+    } else if(p==='write2'){
+      setMode('tremor'); setModeLocked(true);
+      phaseBadge.textContent = '4/4 · 이름 쓰기 (손떨림)';
+      instr.innerHTML = '이번엔 <b>손떨림 상태</b>로 같은 이름을 써보세요';
+      writeDoneBtn.textContent = '완료';
+      showScene('write'); resizeWrite(); clearWrite();
+    } else if(p==='summary'){
+      setModeLocked(false);
+      phaseBadge.textContent = '완료';
+      showScene('summary');
+    }
+  }
+
+  function setModeLocked(locked){
+    [btnNormal, btnTremor].forEach(b=>{
+      b.disabled = locked;
+      b.style.opacity = locked ? 0.35 : 1;
+      b.style.pointerEvents = locked ? 'none' : 'auto';
+    });
+  }
+
+  resetBtn.addEventListener('click', ()=>{
+    tries=0; successes=0; statTries.textContent='0'; statSuccess.textContent='0';
+    startPhase('btnNormal');
+  });
+
+  // ================= BUTTON STAGE (2 buttons at once) =================
+  const AMP = 11;
+  function makeBtnState(el, holeEl, startSide){
+    return {
+      el, holeEl, startSide, solved:false,
+      startX:0, startY:0, dragging:false, rawX:0, rawY:0, t0:0,
+      freqX: 5.4+Math.random()*2.2, freqY: 4.6+Math.random()*2.2,
+      phaseX: Math.random()*Math.PI*2, phaseY: Math.random()*Math.PI*2
+    };
+  }
+  const bStates = [ makeBtnState(btn1El, hole1, 'left'), makeBtnState(btn2El, hole2, 'right') ];
+  let activeDrag = null;
+
+  function layoutButtons(){
+    hole1.classList.remove('success'); hole2.classList.remove('success');
+    btn1El.classList.remove('success'); btn2El.classList.remove('success');
+    successBadge.classList.remove('show');
+    const sRect = stage.getBoundingClientRect();
+    const pRect = placket.getBoundingClientRect();
+    hole1.style.left = (pRect.left - sRect.left + pRect.width/2) + 'px';
+    hole1.style.top  = (pRect.top - sRect.top + pRect.height*0.32) + 'px';
+    hole2.style.left = (pRect.left - sRect.left + pRect.width/2) + 'px';
+    hole2.style.top  = (pRect.top - sRect.top + pRect.height*0.68) + 'px';
+
+    bStates.forEach(st=>{
+      st.solved = false;
+      const holeRect = st.holeEl.getBoundingClientRect();
+      const dx = st.startSide==='left' ? -95 : 95;
+      st.startX = (holeRect.left - sRect.left) + dx;
+      st.startY = (holeRect.top - sRect.top) + holeRect.height/2 - 23;
+      placeBtn(st, st.startX, st.startY);
+    });
+  }
+  window.addEventListener('resize', ()=>{ if(phase==='btnNormal'||phase==='btnTremor') layoutButtons(); if(phase==='write1'||phase==='write2'){ resizeWrite(); } });
+
+  function placeBtn(st, x, y){ st.el.style.left=x+'px'; st.el.style.top=y+'px'; }
+
+  function jitterOffset(st, t){
+    if(mode!=='tremor') return {x:0,y:0};
+    return {
+      x: Math.sin(t*st.freqX*Math.PI*2 + st.phaseX)*AMP + (Math.random()-0.5)*AMP*0.4,
+      y: Math.cos(t*st.freqY*Math.PI*2 + st.phaseY)*AMP + (Math.random()-0.5)*AMP*0.4
+    };
+  }
+  function stagePos(e){
+    const rect = stage.getBoundingClientRect();
+    const cx = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    const cy = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+    return {x:cx, y:cy};
+  }
+  function makeOnDown(st){
+    return function(e){
+      if(st.solved || (phase!=='btnNormal' && phase!=='btnTremor')) return;
+      e.preventDefault();
+      activeDrag = st; st.dragging = true; st.el.classList.add('dragging');
+      st.t0 = performance.now()/1000;
+      const p = stagePos(e); st.rawX = p.x-23; st.rawY = p.y-23;
+    };
+  }
+  function onMove(e){
+    if(!activeDrag || !activeDrag.dragging) return;
+    e.preventDefault();
+    const p = stagePos(e); activeDrag.rawX = p.x-23; activeDrag.rawY = p.y-23;
+  }
+  function onUp(){
+    if(!activeDrag || !activeDrag.dragging) return;
+    const st = activeDrag;
+    st.dragging = false; st.el.classList.remove('dragging'); activeDrag = null;
+    tries++; statTries.textContent = String(tries);
+    checkSuccess(st);
+  }
+  function checkSuccess(st){
+    const holeRect = st.holeEl.getBoundingClientRect();
+    const btnRect = st.el.getBoundingClientRect();
+    const bcx = btnRect.left+btnRect.width/2, bcy = btnRect.top+btnRect.height/2;
+    const hcx = holeRect.left+holeRect.width/2, hcy = holeRect.top+holeRect.height/2;
+    const within = Math.abs(bcx-hcx) < holeRect.width*0.42 && Math.abs(bcy-hcy) < holeRect.height*1.1;
+    if(within){
+      st.solved = true; successes++; statSuccess.textContent = String(successes);
+      st.holeEl.classList.add('success'); st.el.classList.add('success');
+      const sRect = stage.getBoundingClientRect();
+      placeBtn(st, hcx-sRect.left-23, hcy-sRect.top-23);
+      if(bStates.every(s=>s.solved)){
+        successBadge.classList.add('show');
+        setTimeout(()=>{
+          if(phase==='btnNormal') startPhase('btnTremor');
+          else if(phase==='btnTremor') startPhase('write1');
+        }, 900);
+      }
+    } else {
+      placeBtn(st, st.startX, st.startY);
+    }
+  }
+  function tickButton(){
+    if(activeDrag && activeDrag.dragging){
+      const st = activeDrag;
+      const t = performance.now()/1000 - st.t0;
+      const j = jitterOffset(st, t);
+      placeBtn(st, st.rawX+j.x, st.rawY+j.y);
+    }
+  }
+  btn1El.addEventListener('pointerdown', makeOnDown(bStates[0]));
+  btn2El.addEventListener('pointerdown', makeOnDown(bStates[1]));
+  window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerup', onUp);
+  btn1El.addEventListener('touchstart', makeOnDown(bStates[0]), {passive:false});
+  btn2El.addEventListener('touchstart', makeOnDown(bStates[1]), {passive:false});
+  window.addEventListener('touchmove', onMove, {passive:false});
+  window.addEventListener('touchend', onUp);
+
+  // ================= WRITE STAGE =================
+  const guideCanvas = document.getElementById('guideCanvas');
+  const drawCanvas = document.getElementById('drawCanvas');
+  const gctx = guideCanvas.getContext('2d');
+  const dctx = drawCanvas.getContext('2d');
+  let dpr = Math.max(1, window.devicePixelRatio||1);
+
+  function resizeWrite(){
+    dpr = Math.max(1, window.devicePixelRatio||1);
+    [guideCanvas, drawCanvas].forEach(c=>{
+      c.width = stage.clientWidth*dpr; c.height = stage.clientHeight*dpr;
+    });
+    drawGuideLines();
+  }
+  function drawGuideLines(){
+    const W=guideCanvas.width, H=guideCanvas.height;
+    gctx.clearRect(0,0,W,H);
+    gctx.strokeStyle='rgba(148,160,170,0.4)';
+    gctx.lineWidth=2*dpr;
+    const y = H*0.56;
+    gctx.beginPath(); gctx.moveTo(W*0.1, y); gctx.lineTo(W*0.9, y); gctx.stroke();
+    gctx.setLineDash([4*dpr,7*dpr]);
+    gctx.beginPath(); gctx.moveTo(W*0.1, y-H*0.09); gctx.lineTo(W*0.9, y-H*0.09); gctx.stroke();
+    gctx.setLineDash([]);
+    gctx.fillStyle='rgba(148,160,170,0.55)';
+    gctx.font = (26*dpr)+'px sans-serif';
+    gctx.fillText('이 름', W*0.1, y-H*0.12);
+  }
+  function clearWrite(){ dctx.clearRect(0,0,drawCanvas.width, drawCanvas.height); }
+
+  let wDrawing=false, wRawX=0, wRawY=0, wLastX=0, wLastY=0, wT0=0;
+  function wAmp(){ return 9*dpr; }
+  function getWritePos(e){
+    const rect = drawCanvas.getBoundingClientRect();
+    const cx = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    const cy = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+    return {x:cx*dpr, y:cy*dpr};
+  }
+  function wJitter(x,y,t){
+    if(mode!=='tremor') return {x,y};
+    const jx = Math.sin(t*freqX*Math.PI*2+phaseX)*wAmp() + (Math.random()-0.5)*wAmp()*0.4;
+    const jy = Math.cos(t*freqY*Math.PI*2+phaseY)*wAmp() + (Math.random()-0.5)*wAmp()*0.4;
+    return {x:x+jx, y:y+jy};
+  }
+  function wDown(e){
+    if(phase!=='write1' && phase!=='write2') return;
+    e.preventDefault(); wDrawing=true; wT0=performance.now()/1000;
+    const p=getWritePos(e); wRawX=p.x; wRawY=p.y;
+    const j=wJitter(wRawX,wRawY,0); wLastX=j.x; wLastY=j.y;
+    dctx.lineWidth=3*dpr; dctx.lineCap='round'; dctx.lineJoin='round';
+    dctx.strokeStyle = mode==='tremor' ? '#D9A441' : '#4C8B87';
+  }
+  function wMove(e){
+    if(!wDrawing) return; e.preventDefault();
+    const p=getWritePos(e); wRawX=p.x; wRawY=p.y;
+    const t=performance.now()/1000-wT0;
+    const j=wJitter(wRawX,wRawY,t);
+    dctx.beginPath(); dctx.moveTo(wLastX,wLastY); dctx.lineTo(j.x,j.y); dctx.stroke();
+    wLastX=j.x; wLastY=j.y;
+  }
+  function wUp(){ wDrawing=false; }
+  function tickWrite(){
+    if(wDrawing && mode==='tremor'){
+      const t=performance.now()/1000-wT0;
+      const j=wJitter(wRawX,wRawY,t);
+      dctx.beginPath(); dctx.moveTo(wLastX,wLastY); dctx.lineTo(j.x,j.y); dctx.stroke();
+      wLastX=j.x; wLastY=j.y;
+    }
+  }
+  drawCanvas.addEventListener('pointerdown', wDown);
+  drawCanvas.addEventListener('pointermove', wMove);
+  window.addEventListener('pointerup', wUp);
+  drawCanvas.addEventListener('touchstart', wDown, {passive:false});
+  drawCanvas.addEventListener('touchmove', wMove, {passive:false});
+  window.addEventListener('touchend', wUp);
+  writeDoneBtn.addEventListener('click', ()=>{
+    if(phase==='write1') startPhase('write2');
+    else startPhase('summary');
+  });
+
+  // ================= MAIN LOOP =================
+  function loop(){
+    requestAnimationFrame(loop);
+    tickButton();
+    tickWrite();
+  }
+
+  startPhase('btnNormal');
+  loop();
+})();
+</script>
+</body>
+</html>

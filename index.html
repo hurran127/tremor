@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="손떨림·디지털소외체험">
+<meta name="theme-color" content="#14181C">
+<title>손떨림 · 디지털소외 통합체험</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-deep:#14181C; --bg-panel:#1B2026; --bg-panel-2:#242B32;
+    --ink:#EEEAE2; --ink-dim:#94A0AA; --ink-faint:#5B646D;
+    --amber:#D9A441; --amber-dim:#8A6C33; --teal:#4C8B87; --line:#333B43; --bad:#C1594F; --good:#5E9E6E;
+    --fabric:#2B4A5A; --fabric-2:#233C49;
+    --safe-top: env(safe-area-inset-top, 0px); --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; touch-action:none; user-select:none;}
+  html,body{ margin:0; padding:0; width:100%; height:100%; background:var(--bg-deep); color:var(--ink);
+    font-family:'Noto Sans KR',sans-serif; overflow:hidden; overscroll-behavior:none; }
+  .mono{ font-family:'JetBrains Mono',monospace; }
+  #app{ position:fixed; inset:0; display:flex; flex-direction:column; }
+  #topbar{ flex-shrink:0; padding: calc(var(--safe-top) + 12px) 18px 12px;
+    display:flex; align-items:center; justify-content:space-between; background:var(--bg-panel); border-bottom:1px solid var(--line); gap:8px; }
+  #topbar h1{ margin:0; font-size:13.5px; font-weight:700; }
+  #phaseBadge{ font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:700; color:var(--bg-deep);
+    background:var(--amber); padding:4px 8px; border-radius:5px; white-space:nowrap; }
+  #modeButtons{ display:flex; gap:6px; }
+  .modebtn{ padding:6px 10px; border-radius:16px; border:1px solid var(--line); background:var(--bg-panel-2);
+    color:var(--ink-dim); font-size:11.5px; font-weight:700; cursor:pointer; }
+  .modebtn.on{ border-color:var(--teal); background:rgba(76,139,135,0.16); color:var(--teal); }
+  .modebtn.on.trm{ border-color:var(--amber); background:rgba(217,164,65,0.16); color:var(--amber); }
+
+  #stage{ position:relative; flex:1; min-height:0; background:#0F1215; overflow:hidden auto; }
+
+  #statRow{ position:absolute; top:12px; left:0; right:0; display:flex; justify-content:center; gap:14px; z-index:5; pointer-events:none; }
+  .stat{ font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-dim); background:rgba(27,32,38,.7);
+    border:1px solid var(--line); border-radius:14px; padding:4px 10px; }
+  .stat b{ color:var(--amber); }
+  #instr{ position:absolute; top:52px; left:0; right:0; text-align:center; font-size:12.5px; color:var(--ink-dim); pointer-events:none; padding:0 20px; z-index:5; }
+  #instr b{ color:var(--ink); }
+
+  #levelScene{ position:absolute; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:0 30px; text-align:center; }
+  #levelScene h2{ margin:0; font-size:18px; }
+  #levelScene p{ margin:0; color:var(--ink-dim); font-size:12.5px; line-height:1.6; max-width:320px; }
+  #levelGrid{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; width:100%; max-width:280px; }
+  .levelchip{ padding:18px 6px; border-radius:14px; border:1.5px solid var(--line); background:var(--bg-panel-2); cursor:pointer; }
+  .levelchip .t{ font-weight:700; font-size:15px; display:block; color:var(--ink); }
+  .levelchip .s{ font-size:10px; color:var(--ink-faint); margin-top:3px; display:block; }
+  .levelchip.active{ border-color:var(--amber); background:rgba(217,164,65,0.16); }
+  .levelchip.active .t{ color:var(--amber); }
+  .bigBtn{ background:var(--amber); color:#1B1300; border:none; font-weight:700; font-size:15px; padding:13px 28px; border-radius:30px; cursor:pointer; }
+  .bigBtn:disabled{ opacity:.35; pointer-events:none; }
+  .ghostBtn{ background:var(--bg-panel-2); color:var(--ink-dim); border:1px solid var(--line); font-weight:700; font-size:13px; padding:10px 18px; border-radius:24px; cursor:pointer; }
+
+  #buttonScene{ position:absolute; inset:0; }
+  #placket{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    width:130px; height:360px; background:linear-gradient(180deg, var(--fabric), var(--fabric-2));
+    border-radius:10px; box-shadow:0 10px 30px rgba(0,0,0,.4); }
+  #placket::before{ content:''; position:absolute; left:50%; top:0; bottom:0; width:1px; background:rgba(255,255,255,.08); }
+  .buttonhole{ position:absolute; width:44px; height:16px; margin-left:-22px; margin-top:-8px;
+    border-radius:8px; border:2px dashed rgba(217,164,65,0.65); background:rgba(0,0,0,0.25); }
+  .buttonhole.success{ border-style:solid; border-color:var(--teal); background:rgba(76,139,135,0.25); }
+  .btnObj{ position:absolute; width:44px; height:44px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #F3E4C2, #C9A24B 70%, #93732C 100%);
+    box-shadow:0 4px 10px rgba(0,0,0,.4), inset 0 0 0 2px rgba(0,0,0,.15);
+    display:flex; align-items:center; justify-content:center; cursor:grab; touch-action:none; }
+  .btnObj .holes{ display:grid; grid-template-columns:repeat(2,1fr); gap:7px; }
+  .btnObj .holes span{ width:5px; height:5px; border-radius:50%; background:rgba(60,45,10,.55); display:block; }
+  .btnObj.dragging{ cursor:grabbing; }
+  .btnObj.success{ background:radial-gradient(circle at 35% 30%, #DFF3E4, #7FBF8E 70%, #4E8F5E 100%); }
+  #successBadge{ position:absolute; left:50%; bottom:12%; transform:translate(-50%,10px); z-index:6;
+    background:var(--teal); color:#0D1F1D; font-weight:700; font-size:13px; padding:8px 16px; border-radius:20px;
+    opacity:0; transition:opacity .2s, transform .2s; pointer-events:none; }
+  #successBadge.show{ opacity:1; transform:translate(-50%,0); }
+
+  #writeScene{ position:absolute; inset:0; display:none; }
+  #guideCanvas, #drawCanvas{ position:absolute; top:0; left:0; right:0; bottom:70px; width:100%; height:calc(100% - 70px); }
+  #writeDoneBtn{ position:absolute; left:50%; bottom:22px; transform:translateX(-50%); z-index:20; pointer-events:auto; touch-action:auto;
+    background:var(--amber); color:#1B1300; border:none; font-weight:700; font-size:14px; padding:11px 26px; border-radius:26px; cursor:pointer; }
+
+  .dgScene{ position:absolute; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center; gap:12px; padding:16px; text-align:center; }
+  .dgScene.active{ display:flex; }
+  .eyebrow{ font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:700; letter-spacing:.06em; color:var(--amber); background:rgba(217,164,65,0.14); padding:5px 12px; border-radius:20px; }
+  h2.title{ font-size:18px; font-weight:900; margin:0; line-height:1.4; }
+  .desc{ font-size:12px; color:var(--ink-dim); line-height:1.6; margin:0; }
+  #timerBox{ font-family:'JetBrains Mono',monospace; font-size:22px; font-weight:900; color:var(--amber); }
+  #timerBox.warn{ color:var(--bad); animation:pulse .5s infinite; }
+  @keyframes pulse{ 0%,100%{opacity:1} 50%{opacity:.4} }
+  .targetBox{ background:var(--bg-panel); border:1.5px solid var(--line); border-radius:14px; padding:10px 14px; width:100%; max-width:340px; }
+  .targetBox .label{ font-size:10.5px; color:var(--ink-faint); margin-bottom:5px; }
+  .targetBox .value{ font-size:16px; font-weight:700; letter-spacing:2px; word-break:break-all; }
+  .targetBox .value .done{ color:var(--good); }
+  .targetBox .value .next{ color:var(--amber); text-decoration:underline; }
+  .targetBox .value .pending{ color:var(--ink-faint); }
+  .keyGrid{ display:grid; gap:6px; width:100%; max-width:340px; }
+  @keyframes vibrateMedium{
+    0%,100%{ transform:translate(0,0); }
+    15%{ transform:translate(-9px,5px); }
+    30%{ transform:translate(8px,-6px); }
+    45%{ transform:translate(-7px,7px); }
+    60%{ transform:translate(6px,-5px); }
+    75%{ transform:translate(-5px,4px); }
+    90%{ transform:translate(4px,-3px); }
+  }
+  #l2Grid.vibrate-medium{ animation:vibrateMedium .4s ease-in-out; }
+  .key{ position:relative; z-index:2; border-radius:10px; border:1.5px solid var(--line); background:var(--bg-panel-2); color:var(--ink);
+    font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .key.shake{ animation:shake .3s; border-color:var(--bad); background:rgba(193,89,79,0.18); }
+  .key.hit{ border-color:var(--good); background:rgba(94,158,110,0.22); }
+  @keyframes shake{ 0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)} 40%{transform:translateX(5px)} 60%{transform:translateX(-3px)} 80%{transform:translateX(3px)} }
+  .payBtn{ width:100%; max-width:340px; padding:15px; border-radius:14px; border:none; background:linear-gradient(135deg,var(--teal),#3A6E6B); color:#eafff9; font-weight:900; font-size:15px; cursor:pointer; }
+  .payBtn.shake{ animation:shake .3s; background:var(--bad); }
+  .metricGrid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; width:100%; max-width:360px; }
+  .metricCard{ background:var(--bg-panel-2); border:1px solid var(--line); border-radius:14px; padding:11px; }
+  .metricCard .l{ font-size:10px; color:var(--ink-faint); }
+  .metricCard .v{ font-family:'JetBrains Mono',monospace; font-size:17px; font-weight:700; color:var(--amber); margin-top:3px; }
+
+  #cupArea{ position:relative; width:100%; max-width:340px; height:230px; background:linear-gradient(180deg,#1B2026,#12161A); border:1.5px solid var(--line); border-radius:16px; overflow:hidden; }
+  #personZone{ position:absolute; top:14px; right:22px; font-size:34px; text-align:center; }
+  #handZone{ position:absolute; left:50%; top:56px; transform:translateX(-50%); font-size:26px; }
+  #targetRing{ position:absolute; left:50%; top:92px; width:52px; height:52px; margin-left:-26px; border:2px dashed rgba(217,164,65,0.7); border-radius:50%; }
+  #cupObj{ position:absolute; left:26px; bottom:20px; width:40px; height:56px; cursor:grab; touch-action:none; }
+  #cupBody{ position:absolute; inset:0; border:2px solid #cfd8dd; border-top:none; border-radius:0 0 8px 8px; background:rgba(255,255,255,0.04); }
+  #waterFill{ position:absolute; left:2px; right:2px; bottom:2px; height:70%; background:linear-gradient(180deg,#7fc7e8,#3f8fbf); border-radius:0 0 6px 6px; transition:height .15s linear; }
+  #cupObj.dragging{ cursor:grabbing; }
+  #cupStatus{ display:flex; gap:16px; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--ink-dim); }
+  #cupStatus b{ color:var(--amber); }
+
+  #permOverlay{ position:absolute; inset:0; z-index:20; background:var(--bg-deep); display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:30px; gap:14px; }
+  #permOverlay p{ margin:0; color:var(--ink-dim); font-size:13px; line-height:1.65; max-width:340px; }
+
+  #bottomBar{ flex-shrink:0; background:var(--bg-panel); border-top:1px solid var(--line);
+    padding: 10px 18px calc(var(--safe-bottom) + 10px); display:flex; align-items:center; gap:10px; }
+  #resetBtn{ flex:0 0 auto; display:flex; align-items:center; gap:6px; background:var(--bg-panel-2); border:1px solid var(--line);
+    border-radius:20px; padding:8px 14px; color:var(--ink-dim); font-size:12px; cursor:pointer; }
+  #note{ flex:1; font-size:10.5px; color:var(--ink-faint); line-height:1.4; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <h1>통합 체험</h1>
+    <span id="phaseBadge" class="mono">시작</span>
+    <div id="modeButtons">
+      <button id="btnNormal" class="modebtn on">1 정상</button>
+      <button id="btnTremor" class="modebtn trm">2 손떨림</button>
+    </div>
+  </div>
+
+  <div id="stage">
+    <div id="statRow" style="display:none;">
+      <div class="stat">시도 <b id="statTries">0</b>회</div>
+      <div class="stat">성공 <b id="statSuccess">0</b>회</div>
+    </div>
+    <div id="instr" style="display:none;"></div>
+
+    <div id="buttonScene">
+      <div id="placket"></div>
+      <div class="buttonhole" id="hole1"></div>
+      <div class="buttonhole" id="hole2"></div>
+      <div class="buttonhole" id="hole3"></div>
+      <div id="successBadge">✓ 다 채웠어요!</div>
+      <div class="btnObj" id="btn1"><div class="holes"><span></span><span></span><span></span><span></span></div></div>
+      <div class="btnObj" id="btn2"><div class="holes"><span></span><span></span><span></span><span></span></div></div>
+      <div class="btnObj" id="btn3"><div class="holes"><span></span><span></span><span></span><span></span></div></div>
+    </div>
+
+    <div id="levelScene">
+      <div class="eyebrow">강도 선택</div>
+      <h2>손떨림 강도를 골라주세요</h2>
+      <p>고르신 강도로 이어서 체험합니다.</p>
+      <div id="levelGrid">
+        <div class="levelchip" data-level="mild"><span class="t">약하게</span><span class="s">가볍게 흔들림</span></div>
+        <div class="levelchip" data-level="severe"><span class="t">세게</span><span class="s">매우 힘듦</span></div>
+      </div>
+      <button id="levelNextBtn" class="bigBtn" disabled>다음 →</button>
+    </div>
+
+    <div id="writeScene">
+      <canvas id="guideCanvas"></canvas>
+      <canvas id="drawCanvas"></canvas>
+      <button id="writeDoneBtn">다 썼어요</button>
+    </div>
+
+    <div class="dgScene" id="scene-l2">
+      <div class="eyebrow">디지털소외 · 본인인증</div>
+      <h2 class="title">인증번호 10초 안에 입력</h2>
+      <p class="desc">키를 누를 때마다 손이 중간 강도로 떨립니다. 영문·숫자·특수문자가 섞인 보안문자를 제한시간 안에 입력하세요. 3번 반복합니다.</p>
+      <div id="timerBox">10</div>
+      <div class="targetBox"><div class="label">보안문자</div><div class="value" id="l2Target"></div></div>
+      <div class="keyGrid" id="l2Grid" style="grid-template-columns:repeat(5,1fr);"></div>
+      <div class="desc" id="l2Miss">오터치 0회</div>
+    </div>
+
+    <div class="dgScene" id="scene-cup">
+      <div class="eyebrow">관절 경직 · 컵 옮기기</div>
+      <h2 class="title">식탁 위의 물컵을 전달해주세요</h2>
+      <p class="desc">손이 심하게 떨려 컵이 좌우로 흔들리고 물이 조금씩 넘칩니다. 어르신 손(🖐)이 있는 자리까지 컵을 옮겨 정확히 놓아보세요.</p>
+      <div id="cupArea">
+        <div id="personZone">🧑‍🦳<div id="handZone">🖐</div><div id="targetRing"></div></div>
+        <div id="cupObj"><div id="waterFill"></div><div id="cupBody"></div></div>
+      </div>
+      <div id="cupStatus">
+        <span>남은 물 <b id="waterPct">100</b>%</span>
+        <span>시도 <b id="cupTries">0</b>회</span>
+      </div>
+      <div class="desc" id="cupMsg">컵을 눌러 손이 있는 자리까지 끌어다 놓아보세요.</div>
+    </div>
+
+    <div class="dgScene" id="scene-summary">
+      <div class="eyebrow">체험 완료</div>
+      <h2 class="title">전체 체험 결과</h2>
+      <div class="metricGrid">
+        <div class="metricCard"><div class="l">단추 시도/성공</div><div class="v" id="mBtn">0/0</div></div>
+        <div class="metricCard"><div class="l">체험한 강도</div><div class="v" id="mLevel">정상 + 세게</div></div>
+        <div class="metricCard" style="grid-column:1/3;"><div class="l">본인인증 오터치 (3라운드 · 세게 떨림)</div><div class="v" id="mMiss2">0회</div></div>
+        <div class="metricCard"><div class="l">컵 옮기기 시도 횟수</div><div class="v" id="mCupTries">0회</div></div>
+        <div class="metricCard"><div class="l">전달 시 남은 물</div><div class="v" id="mCupWater">0%</div></div>
+      </div>
+      <p class="desc">손떨림·관절 경직·디지털 기기 조작까지, 어르신들이 일상에서 겪는 어려움을 한 번에 체감하셨습니다.</p>
+      <button class="ghostBtn" id="btnRestart">처음부터 다시</button>
+    </div>
+
+    <div id="permOverlay">
+      <div class="eyebrow">손떨림 · 디지털소외 통합체험</div>
+      <h2 class="title">노인의 손, 그대로 느껴보세요</h2>
+      <p>단추 3개 채우기와 이름 쓰기, 본인인증 입력, 컵 옮기기까지 — 손떨림과 관절 경직이 일상에 미치는 영향을 이어서 체감합니다. 전체 체험 시간은 약 2분입니다.</p>
+      <button class="bigBtn" id="btnStart">체험 시작하기</button>
+    </div>
+  </div>
+
+  <div id="bottomBar">
+    <button id="resetBtn">↺ 처음부터</button>
+    <div id="note"><b>1/2</b> 버튼으로 정상·손떨림 상태를 확인하며 진행하세요.</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const stage = document.getElementById('stage');
+  const phaseBadge = document.getElementById('phaseBadge');
+  const instr = document.getElementById('instr');
+  const statRow = document.getElementById('statRow');
+  const statTries = document.getElementById('statTries');
+  const statSuccess = document.getElementById('statSuccess');
+  const btnNormal = document.getElementById('btnNormal');
+  const btnTremor = document.getElementById('btnTremor');
+  const resetBtn = document.getElementById('resetBtn');
+
+  const buttonScene = document.getElementById('buttonScene');
+  const levelScene = document.getElementById('levelScene');
+  const writeScene = document.getElementById('writeScene');
+  const placket = document.getElementById('placket');
+  const holes = [document.getElementById('hole1'), document.getElementById('hole2'), document.getElementById('hole3')];
+  const btnEls = [document.getElementById('btn1'), document.getElementById('btn2'), document.getElementById('btn3')];
+  const successBadge = document.getElementById('successBadge');
+  const writeDoneBtn = document.getElementById('writeDoneBtn');
+  const levelGrid = document.getElementById('levelGrid');
+  const levelNextBtn = document.getElementById('levelNextBtn');
+
+  const LEVELS = { mild:{name:'약하게',amp:7}, severe:{name:'세게',amp:16} };
+  let currentLevelKey = 'mild';
+  let currentAmp = 0;
+
+  let mode = 'normal';
+  let phase = 'btnNormal';
+  let tries = 0, successes = 0;
+  let repeatCount = 0; // 같은 강도를 몇 번째 시도 중인지 (2번 채우면 다음 단계로)
+
+  function ampFor(levelKey){ return levelKey ? LEVELS[levelKey].amp : 0; }
+
+  const ALL_SCENES = ['buttonScene','writeScene','l1','l2','l3','summary'];
+  function showScene(which){
+    buttonScene.style.display = which==='button' ? 'block' : 'none';
+    levelScene.style.display = 'none';
+    writeScene.style.display = which==='write' ? 'block' : 'none';
+    ['l2','cup','summary'].forEach(id=> document.getElementById('scene-'+id).classList.toggle('active', which===id));
+    statRow.style.display = which==='button' ? 'flex' : 'none';
+    instr.style.display = (which==='button') ? 'block' : 'none';
+    document.getElementById('modeButtons').style.display = (which==='button'||which==='write') ? 'flex' : 'none';
+  }
+
+  function setMode(next){
+    mode = next;
+    btnNormal.classList.toggle('on', mode==='normal');
+    btnTremor.classList.toggle('on', mode==='tremor');
+  }
+  btnNormal.addEventListener('click', ()=>{});
+  btnTremor.addEventListener('click', ()=>{});
+  function setModeLocked(locked){
+    [btnNormal, btnTremor].forEach(b=>{ b.disabled=true; b.style.opacity=0.55; b.style.pointerEvents='none'; });
+  }
+
+  function startPhase(p){
+    phase = p;
+    if(p==='btnNormal'){
+      currentLevelKey=null; currentAmp=0; setMode('normal'); setModeLocked(true);
+      phaseBadge.textContent = '1/7 · 단추(정상)';
+      instr.innerHTML = '먼저 <b>정상 상태</b>로 단추 3개를 채워보세요';
+      showScene('button'); layoutButtons();
+    } else if(p==='btnSevere'){
+      currentLevelKey='severe'; currentAmp=ampFor('severe'); setMode('tremor'); setModeLocked(true);
+      phaseBadge.textContent = '2/7 · 단추(세게)';
+      instr.innerHTML = '이번엔 <b>세게</b> 손떨림 상태로 단추 3개를 채워보세요';
+      showScene('button'); layoutButtons();
+    } else if(p==='write1'){
+      currentLevelKey=null; currentAmp=0; setMode('normal'); setModeLocked(true);
+      phaseBadge.textContent = '3/5 · 이름쓰기(정상)';
+      writeDoneBtn.textContent = '다음 (세게)';
+      showScene('write'); resizeWrite(); clearWrite();
+    } else if(p==='writeSevere'){
+      currentLevelKey='severe'; currentAmp=ampFor('severe'); setMode('tremor'); setModeLocked(true);
+      phaseBadge.textContent = '4/5 · 이름쓰기(세게)';
+      writeDoneBtn.textContent = '디지털소외 체험으로 →';
+      showScene('write'); resizeWrite(); clearWrite();
+    } else if(p==='l2'){
+      l2Round = 1;
+      phaseBadge.textContent = '5/6 · 본인인증 (1/3회)'; showScene('l2'); startL2();
+    } else if(p==='cup'){
+      phaseBadge.textContent = '6/6 · 컵 옮기기'; showScene('cup'); startCup();
+    } else if(p==='summary'){
+      phaseBadge.textContent = '완료'; showScene('summary'); renderSummary();
+    }
+  }
+
+  document.getElementById('btnStart').addEventListener('click', ()=>{
+    document.getElementById('permOverlay').style.display='none';
+    startPhase('btnNormal');
+  });
+  resetBtn.addEventListener('click', ()=>{
+    tries=0; successes=0; statTries.textContent='0'; statSuccess.textContent='0';
+    currentLevelKey='mild'; currentAmp=LEVELS.mild.amp;
+    startPhase('btnNormal');
+  });
+
+  // ============ BUTTON STAGE (3 buttons) ============
+  function makeBtnState(el, holeEl, order){
+    return { el, holeEl, order, solved:false, startX:0,startY:0, dragging:false, rawX:0, rawY:0, t0:0,
+      freqX:5.4+Math.random()*2.2, freqY:4.6+Math.random()*2.2, phaseX:Math.random()*Math.PI*2, phaseY:Math.random()*Math.PI*2 };
+  }
+  const bStates = [ makeBtnState(btnEls[0],holes[0],0), makeBtnState(btnEls[1],holes[1],1), makeBtnState(btnEls[2],holes[2],2) ];
+  let activeDrag = null;
+
+  function layoutButtons(){
+    holes.forEach(h=>h.classList.remove('success'));
+    btnEls.forEach(b=>b.classList.remove('success'));
+    successBadge.classList.remove('show');
+    const sRect = stage.getBoundingClientRect();
+    const pRect = placket.getBoundingClientRect();
+    const fracs = [0.22, 0.5, 0.78];
+    holes.forEach((h,i)=>{
+      h.style.left=(pRect.left-sRect.left+pRect.width/2)+'px';
+      h.style.top=(pRect.top-sRect.top+pRect.height*fracs[i])+'px';
+    });
+    bStates.forEach((st,i)=>{
+      st.solved=false;
+      const holeRect = st.holeEl.getBoundingClientRect();
+      const dx = i%2===0 ? -95 : 95;
+      st.startX = (holeRect.left-sRect.left)+dx;
+      st.startY = (holeRect.top-sRect.top)+holeRect.height/2-22;
+      placeBtn(st, st.startX, st.startY);
+    });
+  }
+  window.addEventListener('resize', ()=>{ if(phase==='btnNormal'||phase==='btnMild'||phase==='btnSevere') layoutButtons(); if(phase==='write1'||phase==='writeMild'||phase==='writeSevere') resizeWrite(); });
+  function placeBtn(st,x,y){ st.el.style.left=x+'px'; st.el.style.top=y+'px'; }
+  function jitterOffset(st,t){
+    if(mode!=='tremor') return {x:0,y:0};
+    return { x:Math.sin(t*st.freqX*Math.PI*2+st.phaseX)*currentAmp+(Math.random()-0.5)*currentAmp*0.4,
+             y:Math.cos(t*st.freqY*Math.PI*2+st.phaseY)*currentAmp+(Math.random()-0.5)*currentAmp*0.4 };
+  }
+  function stagePos(e){
+    const rect = stage.getBoundingClientRect();
+    const cx=(e.touches?e.touches[0].clientX:e.clientX)-rect.left, cy=(e.touches?e.touches[0].clientY:e.clientY)-rect.top;
+    return {x:cx,y:cy};
+  }
+  function makeOnDown(st){
+    return function(e){
+      if(st.solved || (phase!=='btnNormal'&&phase!=='btnMild'&&phase!=='btnSevere')) return;
+      e.preventDefault();
+      activeDrag=st; st.dragging=true; st.el.classList.add('dragging'); st.t0=performance.now()/1000;
+      const p=stagePos(e); st.rawX=p.x-22; st.rawY=p.y-22;
+    };
+  }
+  function onMove(e){ if(!activeDrag||!activeDrag.dragging) return; e.preventDefault(); const p=stagePos(e); activeDrag.rawX=p.x-22; activeDrag.rawY=p.y-22; }
+  function onUp(){
+    if(!activeDrag||!activeDrag.dragging) return;
+    const st=activeDrag; st.dragging=false; st.el.classList.remove('dragging'); activeDrag=null;
+    tries++; statTries.textContent=String(tries); checkSuccess(st);
+  }
+  function checkSuccess(st){
+    const holeRect=st.holeEl.getBoundingClientRect(), btnRect=st.el.getBoundingClientRect();
+    const bcx=btnRect.left+btnRect.width/2, bcy=btnRect.top+btnRect.height/2;
+    const hcx=holeRect.left+holeRect.width/2, hcy=holeRect.top+holeRect.height/2;
+    const within = Math.abs(bcx-hcx)<holeRect.width*0.42 && Math.abs(bcy-hcy)<holeRect.height*1.1;
+    if(within){
+      st.solved=true; successes++; statSuccess.textContent=String(successes);
+      st.holeEl.classList.add('success'); st.el.classList.add('success');
+      const sRect=stage.getBoundingClientRect(); placeBtn(st, hcx-sRect.left-22, hcy-sRect.top-22);
+      if(bStates.every(s=>s.solved)){
+        successBadge.classList.add('show');
+        setTimeout(()=>{
+          if(phase==='btnNormal') startPhase('btnSevere');
+          else if(phase==='btnSevere') startPhase('write1');
+        }, 900);
+      }
+    } else { placeBtn(st, st.startX, st.startY); }
+  }
+  function tickButton(){
+    if(activeDrag && activeDrag.dragging){
+      const st=activeDrag, t=performance.now()/1000-st.t0, j=jitterOffset(st,t);
+      placeBtn(st, st.rawX+j.x, st.rawY+j.y);
+    }
+  }
+  btnEls.forEach((el,i)=>{
+    el.addEventListener('pointerdown', makeOnDown(bStates[i]));
+    el.addEventListener('touchstart', makeOnDown(bStates[i]), {passive:false});
+  });
+  window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerup', onUp);
+  window.addEventListener('touchmove', onMove, {passive:false});
+  window.addEventListener('touchend', onUp);
+
+  // ============ WRITE STAGE ============
+  const guideCanvas=document.getElementById('guideCanvas'), drawCanvas=document.getElementById('drawCanvas');
+  const gctx=guideCanvas.getContext('2d'), dctx=drawCanvas.getContext('2d');
+  let dpr=Math.max(1, window.devicePixelRatio||1);
+  function resizeWrite(){
+    dpr=Math.max(1, window.devicePixelRatio||1);
+    [guideCanvas,drawCanvas].forEach(c=>{ c.width=c.clientWidth*dpr; c.height=c.clientHeight*dpr; });
+    drawGuideLines();
+  }
+  function drawGuideLines(){
+    const W=guideCanvas.width, H=guideCanvas.height;
+    gctx.clearRect(0,0,W,H); gctx.strokeStyle='rgba(148,160,170,0.4)'; gctx.lineWidth=2*dpr;
+    const y=H*0.5;
+    gctx.beginPath(); gctx.moveTo(W*0.1,y); gctx.lineTo(W*0.9,y); gctx.stroke();
+    gctx.setLineDash([4*dpr,7*dpr]);
+    gctx.beginPath(); gctx.moveTo(W*0.1,y-H*0.09); gctx.lineTo(W*0.9,y-H*0.09); gctx.stroke();
+    gctx.setLineDash([]);
+    gctx.fillStyle='rgba(148,160,170,0.55)'; gctx.font=(24*dpr)+'px sans-serif';
+    gctx.fillText('이 름', W*0.1, y-H*0.12);
+  }
+  function clearWrite(){ dctx.clearRect(0,0,drawCanvas.width,drawCanvas.height); }
+  let wDrawing=false, wRawX=0,wRawY=0,wLastX=0,wLastY=0,wT0=0;
+  const wFreqX=6.3, wFreqY=5.1, wPhaseX=Math.random()*Math.PI*2, wPhaseY=Math.random()*Math.PI*2;
+  function wAmp(){ return currentAmp*0.85*dpr; }
+  function getWritePos(e){
+    const rect=drawCanvas.getBoundingClientRect();
+    const cx=(e.touches?e.touches[0].clientX:e.clientX)-rect.left, cy=(e.touches?e.touches[0].clientY:e.clientY)-rect.top;
+    return {x:cx*dpr,y:cy*dpr};
+  }
+  function wJitter(x,y,t){
+    if(mode!=='tremor') return {x,y};
+    const jx=Math.sin(t*wFreqX*Math.PI*2+wPhaseX)*wAmp()+(Math.random()-0.5)*wAmp()*0.4;
+    const jy=Math.cos(t*wFreqY*Math.PI*2+wPhaseY)*wAmp()+(Math.random()-0.5)*wAmp()*0.4;
+    return {x:x+jx,y:y+jy};
+  }
+  function wDown(e){
+    if(phase!=='write1'&&phase!=='writeMild'&&phase!=='writeSevere') return;
+    const btnRect = writeDoneBtn.getBoundingClientRect();
+    const cx = (e.touches ? e.touches[0].clientX : e.clientX), cy = (e.touches ? e.touches[0].clientY : e.clientY);
+    if(cx>=btnRect.left && cx<=btnRect.right && cy>=btnRect.top && cy<=btnRect.bottom) return; // 버튼 위는 그리기 제외
+    e.preventDefault(); wDrawing=true; wT0=performance.now()/1000;
+    const p=getWritePos(e); wRawX=p.x; wRawY=p.y;
+    const j=wJitter(wRawX,wRawY,0); wLastX=j.x; wLastY=j.y;
+    dctx.lineWidth=3*dpr; dctx.lineCap='round'; dctx.lineJoin='round';
+    dctx.strokeStyle = mode==='tremor' ? '#D9A441' : '#4C8B87';
+  }
+  function wMove(e){
+    if(!wDrawing) return; e.preventDefault();
+    const p=getWritePos(e); wRawX=p.x; wRawY=p.y;
+    const t=performance.now()/1000-wT0, j=wJitter(wRawX,wRawY,t);
+    dctx.beginPath(); dctx.moveTo(wLastX,wLastY); dctx.lineTo(j.x,j.y); dctx.stroke();
+    wLastX=j.x; wLastY=j.y;
+  }
+  function wUp(){ wDrawing=false; }
+  function tickWrite(){
+    if(wDrawing && mode==='tremor'){
+      const t=performance.now()/1000-wT0, j=wJitter(wRawX,wRawY,t);
+      dctx.beginPath(); dctx.moveTo(wLastX,wLastY); dctx.lineTo(j.x,j.y); dctx.stroke();
+      wLastX=j.x; wLastY=j.y;
+    }
+  }
+  drawCanvas.addEventListener('pointerdown', wDown);
+  drawCanvas.addEventListener('pointermove', wMove);
+  window.addEventListener('pointerup', wUp);
+  drawCanvas.addEventListener('touchstart', wDown, {passive:false});
+  drawCanvas.addEventListener('touchmove', wMove, {passive:false});
+  window.addEventListener('touchend', wUp);
+  writeDoneBtn.addEventListener('click', ()=>{
+    if(phase==='write1') startPhase('writeSevere');
+    else startPhase('l2');
+  });
+
+  function loop(){ requestAnimationFrame(loop); tickButton(); tickWrite(); tickL2Jitter(); tickCup(); }
+
+  // ============ DIGITAL EXCLUSION L1~L3 ============
+  function shuffle(arr){ const a=arr.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+  function shake(el){ el.classList.add('shake'); setTimeout(()=>el.classList.remove('shake'),300); }
+
+  let miss2Total=0, timeLeft2=10, timerId=null;
+  let l2Round = 1;
+  const L2_ROUNDS = 3;
+  const L2_POOL = ['A','B','C','D','E','F','G','H','J','K','M','N','P','Q','R','S','T','X','Y','Z','2','3','4','5','6','7','8','9','#','$','%','&'];
+  let L2_TARGET = [];
+  let l2Idx=0;
+
+  function pickTarget(){
+    const pool = shuffle(L2_POOL);
+    return pool.slice(0,6);
+  }
+  function renderL2Target(){
+    document.getElementById('l2Target').innerHTML = L2_TARGET.map((c,i)=> i<l2Idx?`<span class="done">${c}</span>`: i===l2Idx?`<span class="next">${c}</span>`:`<span class="pending">${c}</span>`).join('');
+  }
+  function vibrateGrid(){
+    const grid = document.getElementById('l2Grid');
+    grid.classList.remove('vibrate-medium');
+    void grid.offsetWidth; // 강제 리플로우로 애니메이션 재시작 가능하게 함
+    grid.classList.add('vibrate-medium');
+  }
+  function startL2(){
+    L2_TARGET = pickTarget();
+    const decoys = shuffle(L2_POOL.filter(c=>!L2_TARGET.includes(c))).slice(0,8);
+    l2Idx=0; timeLeft2=10;
+    document.getElementById('l2Miss').textContent = '오터치 '+miss2Total+'회 (키를 누를 때마다 중간 강도로 흔들림 · 라운드 '+l2Round+'/'+L2_ROUNDS+')';
+    document.getElementById('timerBox').textContent='10'; document.getElementById('timerBox').classList.remove('warn');
+    phaseBadge.textContent = '5/6 · 본인인증 ('+l2Round+'/'+L2_ROUNDS+'회)';
+    renderL2Target();
+    const grid=document.getElementById('l2Grid'); grid.innerHTML=''; grid.classList.remove('vibrate-medium');
+    shuffle([...L2_TARGET,...decoys]).forEach(ch=>{
+      const b=document.createElement('button'); b.className='key'; b.style.height='42px'; b.style.fontSize='14px'; b.textContent=ch;
+      b.addEventListener('click', ()=>{
+        vibrateGrid();
+        if(l2Idx>=L2_TARGET.length) return;
+        if(ch===L2_TARGET[l2Idx]){
+          if(Math.random()<0.32){ miss2Total++; updateMissLabel(); shake(b); return; }
+          b.classList.add('hit'); setTimeout(()=>b.classList.remove('hit'),200);
+          l2Idx++; renderL2Target();
+          if(l2Idx>=L2_TARGET.length){ clearInterval(timerId); setTimeout(nextL2RoundOrFinish, 500); }
+        } else { miss2Total++; updateMissLabel(); shake(b); }
+      });
+      grid.appendChild(b);
+    });
+    clearInterval(timerId);
+    timerId=setInterval(()=>{
+      timeLeft2--; const tb=document.getElementById('timerBox'); tb.textContent=String(timeLeft2);
+      if(timeLeft2<=5) tb.classList.add('warn');
+      if(timeLeft2<=0){ clearInterval(timerId); setTimeout(nextL2RoundOrFinish, 400); }
+    },1000);
+  }
+  function updateMissLabel(){
+    document.getElementById('l2Miss').textContent = '오터치 '+miss2Total+'회 (키를 누를 때마다 중간 강도로 흔들림 · 라운드 '+l2Round+'/'+L2_ROUNDS+')';
+  }
+  function nextL2RoundOrFinish(){
+    document.getElementById('l2Grid').classList.remove('vibrate-medium');
+    if(l2Round < L2_ROUNDS){
+      l2Round++;
+      startL2();
+    } else {
+      startPhase('cup');
+    }
+  }
+  function tickL2Jitter(){ /* 키 누를 때만 진동하도록 변경되어 상시 틱은 더 이상 필요 없음 */ }
+
+
+  function renderSummary(){
+    document.getElementById('mBtn').textContent = successes+'/'+tries;
+    document.getElementById('mMiss2').textContent = miss2Total+'회 (총 '+L2_ROUNDS+'라운드)';
+    document.getElementById('mCupTries').textContent = cupTries+'회';
+    document.getElementById('mCupWater').textContent = Math.round(cupWater)+'%';
+  }
+  document.getElementById('btnRestart').addEventListener('click', ()=>{
+    tries=0; successes=0; statTries.textContent='0'; statSuccess.textContent='0';
+    miss2Total=0; l2Round=1; cupTries=0; cupWater=100;
+    startPhase('btnNormal');
+  });
+
+  // ============ CUP CARRYING (관절 경직 + 심한 손떨림) ============
+  const cupArea = document.getElementById('cupArea');
+  const cupObj = document.getElementById('cupObj');
+  const waterFillEl = document.getElementById('waterFill');
+  const targetRing = document.getElementById('targetRing');
+  const cupMsg = document.getElementById('cupMsg');
+  let cupTries = 0;
+  let cupWater = 100;
+  let cupDragging = false;
+  let cupStartLeft = 26, cupStartBottom = 20;
+  let cupRawX = 0, cupRawY = 0;
+  let cupJitterActive = false;
+  let cupT0 = 0;
+  const CUP_AMP = 16; // 심한 손떨림 진폭
+  const cupPhase = { x: Math.random()*Math.PI*2, y: Math.random()*Math.PI*2, fx: 4.6+Math.random()*1.6, fy: 5.2+Math.random()*1.6 };
+
+  function startCup(){
+    cupWater = 100; cupTries = 0;
+    document.getElementById('waterPct').textContent = '100';
+    document.getElementById('cupTries').textContent = '0';
+    cupMsg.textContent = '컵을 눌러 손이 있는 자리까지 끌어다 놓아보세요.';
+    resetCupPosition();
+  }
+  function resetCupPosition(){
+    cupObj.style.left = cupStartLeft+'px';
+    cupObj.style.bottom = cupStartBottom+'px';
+    waterFillEl.style.height = cupWater + '%';
+  }
+  function cupPointerPos(e){
+    const rect = cupArea.getBoundingClientRect();
+    const cx = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    const cy = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+    return { x: cx, y: cy };
+  }
+  function cupDown(e){
+    if(phase!=='cup') return;
+    e.preventDefault();
+    cupDragging = true; cupJitterActive = true; cupT0 = performance.now()/1000;
+    cupObj.classList.add('dragging');
+    const p = cupPointerPos(e);
+    cupRawX = p.x - 20; cupRawY = p.y - 28;
+  }
+  function cupMove(e){
+    if(!cupDragging) return;
+    e.preventDefault();
+    const p = cupPointerPos(e);
+    cupRawX = p.x - 20; cupRawY = p.y - 28;
+  }
+  function cupUp(){
+    if(!cupDragging) return;
+    cupDragging = false; cupJitterActive = false;
+    cupObj.classList.remove('dragging');
+    checkCupDrop();
+  }
+  function tickCup(){
+    if(!cupDragging) return;
+    const t = performance.now()/1000 - cupT0;
+    const jx = Math.sin(t*cupPhase.fx*Math.PI*2 + cupPhase.x) * CUP_AMP + (Math.random()-0.5)*CUP_AMP*0.3;
+    const jy = Math.abs(Math.cos(t*cupPhase.fy*Math.PI*2 + cupPhase.y)) * (CUP_AMP*0.35); // 위아래는 살짝만, 좌우 위주
+    const areaRect = cupArea.getBoundingClientRect();
+    const x = Math.max(0, Math.min(areaRect.width-40, cupRawX + jx));
+    const yFromTop = Math.max(0, Math.min(areaRect.height-56, cupRawY + jy));
+    cupObj.style.left = x + 'px';
+    cupObj.style.bottom = (areaRect.height - yFromTop - 56) + 'px';
+    // 흔들림이 클수록 물이 넘침
+    const shakeMag = Math.abs(jx);
+    if(shakeMag > CUP_AMP*0.55 && cupWater > 0){
+      cupWater = Math.max(0, cupWater - 0.55);
+      waterFillEl.style.height = cupWater + '%';
+      document.getElementById('waterPct').textContent = Math.round(cupWater);
+    }
+  }
+  function checkCupDrop(){
+    cupTries++;
+    document.getElementById('cupTries').textContent = String(cupTries);
+    const cupRect = cupObj.getBoundingClientRect();
+    const ringRect = targetRing.getBoundingClientRect();
+    const ccx = cupRect.left + cupRect.width/2, ccy = cupRect.top + cupRect.height/2;
+    const rcx = ringRect.left + ringRect.width/2, rcy = ringRect.top + ringRect.height/2;
+    const dist = Math.hypot(ccx-rcx, ccy-rcy);
+    const withinTarget = dist < ringRect.width*0.65;
+    if(withinTarget && cupWater > 25){
+      targetRing.style.borderColor = '#5E9E6E'; targetRing.style.borderStyle='solid';
+      cupMsg.textContent = '무사히 전달했습니다! (남은 물 ' + Math.round(cupWater) + '%)';
+      cupMsg.style.color = '#5E9E6E';
+      setTimeout(()=> startPhase('summary'), 1200);
+    } else if(withinTarget && cupWater <= 25){
+      cupMsg.textContent = '자리에는 놓았지만 물이 너무 많이 쏟아졌어요. 다시 시도해보세요.';
+      cupMsg.style.color = '#C1594F';
+      cupWater = Math.min(100, cupWater + 15); // 다음 시도를 위해 약간 보충
+      setTimeout(resetCupPosition, 900);
+    } else {
+      cupMsg.textContent = '목표 지점을 벗어났어요. 손이 있는 자리로 다시 옮겨보세요.';
+      cupMsg.style.color = '#C1594F';
+      setTimeout(resetCupPosition, 900);
+    }
+    if(cupTries >= 5 && !(withinTarget && cupWater > 25)){
+      cupMsg.textContent = '여러 번 시도해도 정확히 놓기 어려웠습니다. 이것이 관절 경직·손떨림을 겪는 어르신의 일상입니다.';
+      cupMsg.style.color = '#D9A441';
+      setTimeout(()=> startPhase('summary'), 1600);
+    }
+  }
+  cupObj.addEventListener('pointerdown', cupDown);
+  window.addEventListener('pointermove', cupMove);
+  window.addEventListener('pointerup', cupUp);
+  cupObj.addEventListener('touchstart', cupDown, {passive:false});
+  window.addEventListener('touchmove', cupMove, {passive:false});
+  window.addEventListener('touchend', cupUp);
+
+  loop(); // 모든 선언이 끝난 뒤 맨 마지막에 시작 (초기화 순서 오류 방지)
+
+})();
+</script>
+</body>
+</html>
